@@ -1,6 +1,7 @@
 import numpy as np
 from math import e, pi
 from matplotlib import pyplot as plt
+from matplotlib import animation as anim
 
 symbSize = 2
 symbol = np.zeros(symbSize, int)
@@ -22,7 +23,7 @@ while(1):
     #variável de estado da formação da palavra
     #false -> os N simbolos da palavra ainda nao foram gerados
     wordReady = False
-    
+
     #fonte de bits
     bitStream = generateRandomBit()
 
@@ -42,5 +43,5 @@ while(1):
     #a partir daqui a palavra com o numero wordSize de simbolos já está formada
     if(wordReady):
         for i in range(wordSize):
-            print(constellationMap(word[i]))
+           print(constellationMap(word[i]))
         wordReady = False
