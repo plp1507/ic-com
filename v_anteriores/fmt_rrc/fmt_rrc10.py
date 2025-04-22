@@ -11,9 +11,9 @@ from matplotlib import pyplot as plt
 
 alpha = 1    ####deve ser maior que 0.2
 k = 10        #fator de oversampling
-Fs = 100     #frequência de amostragem (amostras/s)
+Fs = 200     #frequência de amostragem (amostras/s)
 Ts = k/Fs      #período de símbolo (s)
-l = 10          #comprimento do filtro (segundos)
+l = 20          #comprimento do filtro (segundos)
 
 x = np.linspace(-l/2, l/2, l*Fs+1)/Ts
 filtro_rrc = (1/Ts)*(np.sin(np.pi*x*(1-alpha)) + (4*alpha*x)*np.cos(np.pi*x*(1+alpha)))
@@ -60,7 +60,12 @@ m_demod = np.zeros([m, n*k + Fs*l], dtype= 'complex')
 m_casad = np.zeros([m, n*k + 2*Fs*l], dtype = 'complex')
 m_dwnsp = np.zeros([m, n])
 
+noise = 0.000001
+
 for i in range(m):
+
+    sinal_tx += np.sqrt(noise/2)*(np.random.randn(n*k + l*Fs))
+
     m_demod[i] = sinal_tx*np.exp(2j*np.pi*(i+m)*np.arange(0, n*k + Fs*l)/m)
     m_casad[i] = np.convolve(m_demod[i], filtro_rrc)
     m_dwnsp[i] = m_casad[i][l*Fs:l*Fs + n*k:k].real
