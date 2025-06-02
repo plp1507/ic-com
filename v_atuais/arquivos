@@ -1,0 +1,7 @@
+versoes completas de todos os codigos:
+ofdm, fmt - pulso retangular e fmt - rrc
+
+- funcionamento do sistema (stems e etc, sem analise de desempenho)
+- simulaçao de monte carlo p constelaçoes BPSK e QAM
+    - canal AWGN
+    - canal PLC

@@ -3,9 +3,6 @@ import matplotlib.pyplot as plt
 from scipy.signal import upfirdn
 from scipy.special import erfc
 from scipy.spatial.distance import cdist
-from scipy.io import loadmat
-
-####### Funções
 
 def qam_constellation(M):
     range_ = int(np.sqrt(M))
@@ -49,7 +46,7 @@ def rrc(alpha, Tb, k, l):
 
 ######## Características da mensagem
 
-n_blocos = 10**3   # n. de blocos
+n_blocos = 10**4   # n. de blocos
 l_bloco = 20       # comprimento de cada bloco
 
 m = 10             # n. de portadoras
@@ -63,12 +60,12 @@ Ts = l_bloco*T     # período do bloco de símbolo
 ######## Características da SNR
 npt = 10    # n. de pontos da simulação
 
-SNRt = np.linspace(-2, 20, 1000) #SNR teórica
+SNRt = np.linspace(-2, 10, 1000) #SNR teórica
 SNRs = SNRt[::1000//npt - 1]
 
 argerfc = (3/(2*(M-1)))*(10**(SNRt/10))
 p = (1-np.sqrt(1/M))*erfc(np.sqrt(argerfc))
-SERt = 1 - ((1-p)**2)     # curva teórica da SER pra constelações M-QAM
+SERt = 1 - ((1-p)**2)
 
 sigma2 = 10**(-SNRs/10)
 
@@ -81,63 +78,38 @@ t, g_delay, f_rrc = rrc(alpha, Ts, l_bloco, l_filtro)
 fk = np.arange(m)/(m*T)
 
 banco_filtros = np.zeros([m, len(t)], dtype = 'complex')
-# modulação pela exp. complexa
 for i in range(m):
     banco_filtros[i] = f_rrc*np.exp(2j*np.pi*fk[i]*t)
 
 ######## Transmissão
 
 qam_const = qam_constellation(M)
-# escolha aleatória de símbolos QAM > 1a e últimas portadoras são BPSK
 mensagem = np.random.choice(qam_const, [m, l_bloco*n_blocos])
-mensagem[0] = 2*np.round(np.random.rand(l_bloco*n_blocos)) - 1
-mensagem[-1] = 2*np.round(np.random.rand(l_bloco*n_blocos)) - 1
 
 l_modl = len(upfirdn(banco_filtros[0], mensagem[0], l_bloco))
 m_modl = np.zeros([m, l_modl], dtype = 'complex')
 
-# passagem pelo banco de filtros
 for i in range(m):
     m_modl[i] = upfirdn(banco_filtros[i], mensagem[i], l_bloco)
 
-# soma de todas as portadoras
-sinal_tx = np.sum(m_modl.real, axis = 0)
-
-######## Passagem pelo canal
-
-canal = loadmat('NB_0_500k.mat')['h'][0]
-canal = np.concatenate((canal, np.zeros(l_modl - len(canal))))
-
-sinal_tx = np.convolve(sinal_tx, canal)[:l_modl]
+sinal_tx = np.sum(m_modl, axis = 0)
 
 ######## Recepção
 z = np.zeros([m, l_modl + len(f_rrc) - 1], dtype = 'complex')
 z_dn = np.zeros([m, n_blocos*l_bloco], dtype = 'complex')
 m_r = np.zeros([m, n_blocos*l_bloco], dtype = 'complex')
 
-# Simulação de Monte Carlo
 for j, noise in enumerate(sigma2):
     w = np.sqrt(noise/2)*(np.random.randn(l_modl)+1j*np.random.randn(l_modl))
     sinal_rx = sinal_tx + w
 
-    # Equalização zero forcing
-    sinal_rx = np.fft.ifft(np.fft.fft(sinal_rx)/np.fft.fft(canal))
-
     for i in range(m):
         z[i] = np.convolve(sinal_rx, np.conj(banco_filtros[i][::-1]))
         z_dn[i] = z[i][2*g_delay:-2*g_delay:l_bloco]
-        if(i != 0 and i != m-1):
-            # decisão pela distância euclidiana para as portadoras QAM
-            m_r[i] = decide(z_dn[i], qam_const)
-        else:
-            # decisão pelo sinal para as portadoras BPSK
-            m_r[i] = np.sign(z_dn[i].real)
-        
-        # Contabilização do erro
+        m_r[i] = decide(z_dn[i], qam_const)
+        print(np.sum(m_r[i] != mensagem[i])/(l_bloco*n_blocos), i)
         SERs[j] += np.sum(m_r[i] != mensagem[i])/(l_bloco*n_blocos)
-        print(f'SER da portadora {i}: {np.sum(m_r[i]!= mensagem[i])/(l_bloco*n_blocos)}')
 
-    # SER média
     SERs[j] /= m
 
     print(f'SER simulada: {SERs[j]}')
